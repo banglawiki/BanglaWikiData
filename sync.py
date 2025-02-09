@@ -11,8 +11,18 @@ class WikiDumpDownloader:
     def get_latest_bengali_wiki_dump_url(self):
         url = "https://dumps.wikimedia.org/bnwiki/latest/"
         
-        response = requests.get(url)
-        soup = BeautifulSoup(response.content, 'html.parser')
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+        except requests.RequestException as e:
+            print(f"Error fetching URL: {e}")
+            return None, 0
+        
+        try:
+            soup = BeautifulSoup(response.content, 'html.parser')
+        except Exception as e:
+            print(f"Error parsing HTML: {e}")
+            return None, 0
         
         for link in soup.find_all('a'):
             href = link.get('href')
@@ -20,10 +30,17 @@ class WikiDumpDownloader:
                 full_url = url + href
                 size_in_bytes = self.get_file_size(full_url)
                 return full_url, size_in_bytes
+        
+        return None, 0
 
     def get_file_size(self, url):
-        response = requests.head(url)
-        return int(response.headers.get('content-length', 0))
+        try:
+            response = requests.head(url)
+            response.raise_for_status()
+            return int(response.headers.get('content-length', 0))
+        except requests.RequestException as e:
+            print(f"Error fetching file size: {e}")
+            return 0
 
     def download_wikidump(self, url, filename):
         response = requests.get(url, stream=True)
@@ -67,16 +84,16 @@ def main():
     dump_url, size_in_bytes = downloader.get_latest_bengali_wiki_dump_url()
 
     print(f"Bengali Latest Wiki Dump URL: {dump_url}")
-    print(f"Size: {size_in_bytes} bytes ({size_in_bytes/10*1024**3} GB)")
+    print(f"Size: {size_in_bytes} bytes ({size_in_bytes/1024**3} GB)")
 
     filename = "bnwiki-latest-pages-articles.xml.bz2"
 
-    #downloader.download_wikidump(dump_url, filename)
+    downloader.download_wikidump(dump_url, filename)
 
-    #downloader.extract_titles('bnwiki-latest-pages-articles.xml')
-
+    # Extract titles or sections after downloading the file
+    # downloader.extract_titles('bnwiki-latest-pages-articles.xml')
     downloader.extract_sections('bnwiki-latest-pages-articles.xml')
-    
+
     print("hey")
 
 
